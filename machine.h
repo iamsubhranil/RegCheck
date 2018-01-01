@@ -35,4 +35,6 @@ void machine_init(Machine *m);
 void machine_input(Machine *m, Symbol input);
 State machine_present_state(Machine *m);
 
+void machine_free(Machine *m);
+
 #endif

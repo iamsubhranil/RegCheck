@@ -90,6 +90,22 @@ void machine_print(Machine *m){
     }
 }
 
+void machine_free(Machine *m){
+    uint64_t i = 0, j = 0;
+    while(i < m->states->numStates){
+        j = 0;
+        while(j < m->symbols->numSymbols)
+            free(m->transition[i][j++].states);
+        free(m->transition[i++]);
+    }
+    free(m->transition);
+    state_free(m->initialState);
+    state_free(m->finalState);
+    state_free(m->states);
+    sym_free(m->symbols);
+    free(m);
+}
+
 int main(){
     info("Creating symbols..");
     Symbols *syms = sym_newcol();
@@ -126,10 +142,9 @@ int main(){
         j = 0;
         while(j < 3){
             table[i] = (States *)realloc(table[i], sizeof(States) * (j + 1));
-            States *trans = state_newcol();
-            state_add(trans, state_new((i + j) % 3));
-            table[i][j] = *trans;
-            free(trans);
+            table[i][j].numStates = 0;
+            table[i][j].states = NULL;
+            state_add(&(table[i][j]), state_new((i + j) % 3));
             info("Transition created : ");
             state_print_single(state_new(i));
             printf("---");
@@ -145,6 +160,5 @@ int main(){
     Machine *m = machine_new(states, syms, table, init, end);
     machine_print(m);
 
-    sym_free(syms);
-    state_free(states);
+    machine_free(m);
 }
