@@ -1,8 +1,50 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "symbols.h"
+
+static Symbols *symbolTable = NULL;
+
+static bool table_has(char s){
+    uint64_t i = 0;
+    while(i < symbolTable->numSymbols){
+        if(symbolTable->symbols[i] == s)
+            return true;
+        i++;
+    }
+    return false;
+}
+
+static uint64_t table_indexof(char s){
+    uint64_t i = 0;
+    while(i < symbolTable->numSymbols){
+        if(symbolTable->symbols[i] == s)
+            return i;
+        i++;
+    }
+    return 0;
+}
+
+Symbol sym_new(char s){
+    if(symbolTable == NULL)
+        symbolTable = sym_newcol();
+   if(table_has(s))
+       return table_indexof(s);
+   else{
+        sym_add(symbolTable, s);
+        return symbolTable->numSymbols - 1;
+   }
+}
+
+void sym_print_single(Symbol s){
+    if(s >= symbolTable->numSymbols){
+        printf("UnknownSymbol");
+        return;
+    }
+    printf("%c", symbolTable->symbols[s]);
+}
 
 Symbols* sym_newcol(){
     Symbols *s = (Symbols *)malloc(sizeof(Symbols));

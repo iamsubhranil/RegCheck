@@ -6,10 +6,10 @@
 
 typedef uint8_t Symbol;
 
-#define sym_new(s) (s)
+Symbol sym_new(char s);
 #define sym_id(id) (id)
 #define sym_iseq(sym1, sym2) (sym1 == sym2)
-#define sym_print_single(s) printf("%c", 'a'+s)
+void sym_print_single(Symbol s);
 
 typedef struct{
     uint64_t numSymbols;

@@ -110,9 +110,9 @@ int main(){
     info("Creating symbols..");
     Symbols *syms = sym_newcol();
     info("Adding a, b, c..");
-    sym_add(syms, sym_new(0));
-    sym_add(syms, sym_new(1));
-    sym_add(syms, sym_new(2));
+    sym_add(syms, sym_new('a'));
+    sym_add(syms, sym_new('b'));
+    sym_add(syms, sym_new('c'));
     info("Symbols created : ");
     sym_print(syms);
     
@@ -148,7 +148,7 @@ int main(){
             info("Transition created : ");
             state_print_single(state_new(i));
             printf("---");
-            sym_print_single((uint8_t)sym_new(j));
+            sym_print_single(sym_new('a'+j));
             printf("---> ");
             state_print_single(state_new((i + j) % 3));
             j++;
