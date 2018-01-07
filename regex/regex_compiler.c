@@ -85,7 +85,7 @@ static bool started = false;
 static void next(){
     previous = present;
     present = nextToken();
-    dbg("Token : %s", tokenNames[present.type]);
+   // dbg("Token : %s", tokenNames[present.type]);
 }
 
 static void start(){
@@ -120,9 +120,9 @@ static Expression *exp_new(){
 static Expression* expression();
 
 static Expression* primary(){
-    dbg("In primary");
+    //dbg("In primary");
     if(match(LEFT_PARENTHESIS)){
-        dbg("In lp");
+        //dbg("In lp");
         Expression *g = exp_new();
         g->type = GROUPING;
         g->starexp = expression();
@@ -241,13 +241,167 @@ static void printexp(Expression *exp){
     }
 }
 
+/*
+ * Input construction
+ * ============================================
+ */
+
+typedef struct{
+    Symbols **combos;
+    uint32_t length;
+} Input;
+
+static void input_print(Input *i){
+    uint32_t count = 0;
+    while(count < i->length){
+        printf("\nSet %d : ", (count + 1));
+        sym_print(i->combos[count]);
+        count++;
+    }
+}
+
+static Input* input_new(){
+    Input *i = (Input *)malloc(sizeof(Input));
+    i->combos = NULL;
+    i->length = 0;
+    return i;
+}
+
+static void input_free(Input *in){
+    uint32_t i = 0;
+    while(i < in->length){
+        sym_free(in->combos[i]);
+        i++;
+    }
+    free(in->combos);
+    free(in);
+}
+
+static Input* input_append(Input *root, Symbol s){
+    Input *ret = root;
+    if(ret == NULL){
+        ret = input_new();
+        ret->combos = (Symbols **)malloc(sizeof(Symbols *));
+        ret->combos[0] = sym_newcol();
+        ret->length = 1;
+        sym_add(ret->combos[0], s);
+    }
+    else{
+        uint32_t i = 0;
+        while(i < ret->length){
+            sym_add(ret->combos[i], s);
+            i++;
+        }
+    }
+
+    return ret;
+}
+
+static Input* input_exp(Expression *exp);
+
+static Input* input_lit(Token t){
+    return input_append(NULL, t.value);
+}
+
+static void sym_app_sym(Symbols *orig, Symbols *append){
+    uint64_t i = 0;
+    while(i < append->numSymbols){
+        sym_add(orig, append->symbols[i]);
+        i++;
+    }
+}
+
+static Input* input_and(Expression *e){
+    Input *le = input_exp(e->binexp.left);
+    Input *re = input_exp(e->binexp.right);
+    //dbg("ANDing\nLeft expression : ");
+    //input_print(le);
+    //dbg("Right expression : ");
+    //input_print(re);
+    uint32_t i = 0, j = 0, k = 0;
+    Input *res = input_new();
+    res->length = le->length * re->length;
+    res->combos = (Symbols **)malloc(sizeof(Symbols *) * res->length);
+    while(i < le->length){
+        Symbols *p = le->combos[i];
+        j = 0;
+        while(j < re->length){
+            Symbols *q = sym_newcol();
+            q->numSymbols = p->numSymbols;
+            q->symbols = (Symbol *)malloc(sizeof(Symbol) * q->numSymbols);
+            memcpy(q->symbols, p->symbols, sizeof(Symbol) * p->numSymbols);
+            //dbg("Original symbols : ");
+            //sym_print(q);
+            Symbols *app = re->combos[j];
+            //dbg("Appending symbols : ");
+            //sym_print(app);
+            sym_app_sym(q, app);
+            //dbg("After appending : ");
+            //sym_print(q);
+            res->combos[k] = q;
+            k++; j++;
+        }
+        i++;
+    }
+    input_free(le);
+    input_free(re);
+    //dbg("Resulting AND expression : ");
+    //input_print(res);
+    return res;
+}
+
+static Input* input_or(Expression *e){
+    Input *le = input_exp(e->binexp.left);
+    Input *re = input_exp(e->binexp.right);
+    //dbg("ORing\nLeft expression : ");
+    //input_print(le);
+    //dbg("Right expression : ");
+    //input_print(re);
+    uint32_t po = le->length, i = 0;
+    le->length += re->length;
+    le->combos = (Symbols **)realloc(le->combos, sizeof(Symbols *) * le->length);
+    while(po < le->length){
+        le->combos[po] = re->combos[i];
+        po++; i++;
+    }
+    //dbg("Resulting OR expression : ");
+    free(re->combos);
+    free(re);
+    //input_print(le);
+    return le;
+}
+
+static Input* input_exp(Expression *e){
+    switch(e->type){
+        case AND:
+            return input_and(e);
+        case OR:
+            return input_or(e);
+        case GROUPING:
+            return input_exp(e->starexp);
+        case LITREAL:
+            return input_lit(e->litexp);
+        case WILDCARD:
+            err("Wildcard expressions are not implemented yet!");
+            return NULL;
+    }
+}
+/*
+ * Driver
+ * =====================================
+ */
+
 int main(){
-    const char* exp = "((a+a.b.c).a*.(b* + a.b*)).a*";
+    const char* exp = "((a+b.c.d).e.(f + g.h)).i";
     init_source(exp);
     printf("\nGiven expression : %s\n", exp);
     Expression *tree = expression();
     printf("\nParsed expression : ");
     printexp(tree);
+    printf("\nGenerating possible output combinations...");
+    Input *in = input_exp(tree);
+    printf("\nOutputs : ");
+    input_print(in);
     /*while((t = nextToken()).type != END){
       switch(t.type){
       case IDENTIFIER:
@@ -276,6 +430,6 @@ int main(){
       sym_print_single(t.value);
       printf(") ");
       }*/
-
+    printf("\n");
     return 0;
 }
